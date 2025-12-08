@@ -1,0 +1,39 @@
+# ===== Python / FastAPI =====
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+.env
+shared/*              # if you don't want users' files tracked
+
+# but keep folder structure
+!shared/.gitkeep
+
+
+# ===== Flutter / Android / iOS =====
+**/build/
+**/ios/Pods/
+**/ios/Podfile.lock
+**/.dart_tool/
+**/.packages
+**/.flutter-plugins*
+**/.gradle/
+**/android/.gradle/
+**/android/local.properties
+**/android/app/release/
+**/android/app/profile/
+
+# generated files
+*.log
+*.lock
+*.keystore
+
+# ===== Node/React (if web UI later) =====
+node_modules/
+dist/
+.env.local
+.env.production
+
+
