@@ -11,6 +11,7 @@ shared/*              # if you don't want users' files tracked
 # but keep folder structure
 !shared/.gitkeep
 
+.DS_Store
 
 # ===== Flutter / Android / iOS =====
 **/build/
