@@ -12,6 +12,12 @@
 @import file_picker;
 #endif
 
+#if __has_include(<flutter_pdfview/FLTPDFViewFlutterPlugin.h>)
+#import <flutter_pdfview/FLTPDFViewFlutterPlugin.h>
+#else
+@import flutter_pdfview;
+#endif
+
 #if __has_include(<image_picker_ios/FLTImagePickerPlugin.h>)
 #import <image_picker_ios/FLTImagePickerPlugin.h>
 #else
@@ -46,6 +52,7 @@
 
 + (void)registerWithRegistry:(NSObject<FlutterPluginRegistry>*)registry {
   [FilePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FilePickerPlugin"]];
+  [FLTPDFViewFlutterPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTPDFViewFlutterPlugin"]];
   [FLTImagePickerPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTImagePickerPlugin"]];
   [OpenFilePlugin registerWithRegistrar:[registry registrarForPlugin:@"OpenFilePlugin"]];
   [PathProviderPlugin registerWithRegistrar:[registry registrarForPlugin:@"PathProviderPlugin"]];
