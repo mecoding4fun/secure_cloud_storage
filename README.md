@@ -151,6 +151,6 @@ npm run dev          # start development server
 * [ ] Offline sync
 
 ## 👤 Credits
-
+```
 Built by **Ramachandran**.
 Originally configured to operate over **Tailscale private VPN**.
