@@ -140,7 +140,7 @@ npm run dev          # start development server
 4.  Browse, upload, and stream files remotely.
 
 **Example URL:** `http://100.xxx.xxx.xxx:8000`
-
+```
 ## 🔮 Future Enhancements
 
 * [ ] User accounts + Authentication system
@@ -151,6 +151,6 @@ npm run dev          # start development server
 * [ ] Offline sync
 
 ## 👤 Credits
-```
+
 Built by **Ramachandran**.
 Originally configured to operate over **Tailscale private VPN**.
