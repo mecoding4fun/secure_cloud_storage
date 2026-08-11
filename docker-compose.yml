@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  scs-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: scs_server
+    expose:
+      - "8000"
+    volumes:
+      - ./server/shared:/app/shared
+    environment:
+      - API_KEY=${API_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      - MAX_UPLOAD_BYTES=${MAX_UPLOAD_BYTES:-104857600}
+      - RATE_LIMIT_DEFAULT=${RATE_LIMIT_DEFAULT:-100/minute}
+      - RATE_LIMIT_EXPENSIVE=${RATE_LIMIT_EXPENSIVE:-20/minute}
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8000:8000"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-scs.internal}
+    depends_on:
+      - scs-server
+
+volumes:
+  caddy_data:
+  caddy_config:

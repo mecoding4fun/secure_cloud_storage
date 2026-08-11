@@ -1,156 +1,91 @@
-# 🚀 Secure Cloud Storage Server + Web UI + Flutter Mobile Client
+# Secure Cloud Storage
 
-A self-hosted personal cloud system built using **FastAPI**, **Flutter**, and optionally React UI. This system allows you to upload, download, preview files, stream videos, and manage folders remotely.
+[![CI](https://github.com/mecoding4fun/secure_cloud_storage/actions/workflows/ci.yml/badge.svg)](https://github.com/mecoding4fun/secure_cloud_storage/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-> 💡 **Concept:** Works like a mini Google Drive that you control yourself. Ideal for private home-server usage.
+**Status:** This is a personal-use, self-hosted project. It has been hardened against common web vulnerabilities (path traversal, symlink escapes, unauthenticated access), but is designed for a **single-user, trusted-network threat model** (e.g., accessed via Tailscale or a private LAN). It is **not** designed for multi-tenant SaaS environments.
 
-## 📌 Important Note Before Running
+Secure Cloud Storage is a self-hosted, cross-platform file management system designed to provide a secure, personal cloud storage solution. It enables users to browse, stream, upload, download, and manage files from both a web interface and a mobile application, interacting with a centralized backend server.
 
-**This system is not public-internet accessible by default.**
-It is designed to work securely over **Tailscale VPN**:
+## Key Features
 
-1.  You install Tailscale on your **Server** + **Phone**.
-2.  Use the Tailscale IP (`100.x.x.x`) as the server URL.
-3.  This allows access anywhere (local or remote) without port forwarding.
+- **Cross-Platform Access**: Includes a responsive React web client and a Flutter mobile application.
+- **File Management**: Create folders, upload files, rename, and delete items securely.
+- **Media Streaming**: Native support for HTTP Range requests allowing video streaming without downloading the entire file.
+- **File Previews**: Built-in previews for images, text, and PDF files.
+- **Drag & Drop Uploads**: (Web) Drag and drop files directly into the browser to upload them.
+- **Mobile Integration**: Upload directly from the camera or gallery on Android/iOS.
+- **ZIP Downloads**: Download entire folders as a single ZIP file dynamically.
 
-*Note: If you use a normal Wi-Fi IP (192.168.x.x), it will only work within the same network.*
+## Screenshots
 
-## ✨ Features
+*(Placeholder: Web Client Dashboard)*
+*(Placeholder: Mobile Client File Browser)*
+*(Placeholder: Media Streaming View)*
 
-* **📁 Remote File Explorer:** UI for both Mobile & Web.
-* **🔑 Secure:** API-Key protected backend.
-* **🖼 Media Ready:** Image preview with loading spinners.
-* **🎬 Video Streaming:** Real chunked streaming via FastAPI (not full downloads).
-* **📤 Uploads:** Support for Camera, Gallery, and File Picker (Multi-upload supported).
-* **📥 Downloads:** Saves files directly to the device's actual Downloads folder.
-* **📂 Management:** Create folders and delete files.
-* **⚡ Network:** Optimized for LAN/WAN through Tailscale.
+## Setup Instructions
 
-## 🏗 Tech Stack
+### Option 1: Docker Compose (Recommended)
 
-| Layer | Technology |
-| :--- | :--- |
-| **Backend** | FastAPI (Python) |
-| **Mobile Client** | Flutter |
-| **Storage** | Local filesystem |
-| **Streaming** | FastAPI chunked video |
-| **Network** | Tailscale VPN |
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/mecoding4fun/secure_cloud_storage.git
+   cd secure_cloud_storage
+   ```
 
-## 📁 Project Structure
+2. **Generate a secure API Key**:
+   ```bash
+   openssl rand -hex 32
+   ```
 
-```text
-secure-cloud-storage/
-│── README.md
-│── .gitignore
-│── LICENSE
-│
-├── server/                     # Backend
-│   ├── server.py
-│   ├── requirements.txt
-│   └── shared/                 # Auto-created & used as storage root
-│
-└── mobile_client/              # Flutter App
-    └── remote_file_client/
-        ├── lib/main.dart
-        ├── pubspec.yaml
-        ├── android/
-        ├── ios/
-        └── ...
-```
-## 🔧 Server Setup (Backend)
+3. **Configure Environment**:
+   Copy `.env.example` to `.env` in the root directory:
+   ```bash
+   cp server/.env.example .env
+   # Edit .env and set API_KEY to the value generated above
+   ```
 
-1.  Navigate to the server directory and set up the environment:
-    ```bash
-    cd server
-    python3 -m venv venv
-    source venv/bin/activate  # On Windows use: venv\Scripts\activate
-    pip install -r requirements.txt
-    ```
+4. **Start the server**:
+   ```bash
+   docker compose up -d
+   ```
+   The backend will be available behind a Caddy reverse proxy on port 443 (or whatever is configured in the `Caddyfile`).
 
-2.  **Configuration:**
-    Open `server.py` and update the following configuration:
-    ```python
-    API_KEY = "SETAPIKEY"   # Change this to a secure key
-    SHARED_DIR = "shared"     # Storage directory
-    ```
+### Option 2: Manual Development Setup
 
-3.  Run the server:
-    ```bash
-    uvicorn server:app --host 0.0.0.0 --port 8000
-    ```
+#### Backend
+1. `cd server`
+2. `cp .env.example .env` and fill in `API_KEY`.
+3. `python3 -m venv venv && source venv/bin/activate`
+4. `pip install -r requirements.txt`
+5. `uvicorn server:app --host 0.0.0.0 --port 8000 --reload`
 
-## 📱 Flutter App Setup (Mobile Client)
+#### Web Client
+1. `cd web_client`
+2. `cp .env.example .env.local`
+3. Edit `.env.local` to point `VITE_API_BASE` to `http://localhost:8000` (or your Caddy proxy).
+4. `npm install`
+5. `npm run dev`
 
-1.  Navigate to the app directory:
-    ```bash
-    cd mobile_client/remote_file_client
-    flutter pub get
-    ```
+#### Mobile Client
+1. `cd mobile_client`
+2. `flutter pub get`
+3. `flutter run`
 
-2.  **Configuration:**
-    Open `lib/main.dart` and update the connection details:
-    ```dart
-    // Use your Tailscale IP here (starts with 100.x.x.x)
-    final String baseUrl = "http://YOUR_TAILSCALE_IP:8000"; 
-    
-    // Must match the key in server.py
-    final String apiKey  = "***SECRET_REMOVED***"; 
-    ```
+## Documentation
 
-3.  **Android Manifest Config:**
-    To allow video streaming over HTTP, you must allow cleartext traffic.
-    Open `android/app/src/main/AndroidManifest.xml` and add the `usesCleartextTraffic` line:
-    ```xml
-    <application
-        android:label="Remote File Client"
-        android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true"> ...
-    </application>
-    ```
+- [ARCHITECTURE.md](server/ARCHITECTURE.md): System architecture and data flow.
+- [DEPLOYMENT.md](DEPLOYMENT.md): Deployment, Caddy config, and key rotation.
+- [BACKUP.md](BACKUP.md): Using the host-level restic backup scripts.
+- [SECURITY.md](SECURITY.md): Reporting vulnerabilities.
+- [CONTRIBUTING.md](CONTRIBUTING.md): Contributing guidelines.
 
-4.  Run the app:
-    ```bash
-    flutter run
-    ```
-## 🌐 Web Client Setup (Optional Web UI)
+## Security Features
 
-> The Web Client lets you access files from any browser, similar to a lightweight cloud drive interface.
+- **Strict Authentication**: All endpoints require a Bearer token via `Authorization` header.
+- **Path Sanitization**: Directory traversal and symlink escapes are actively mitigated via strict bounds checking.
+- **Service Worker Protection**: The web client uses a Service Worker to intercept `<img src>`/`<video src>` tags and inject auth tokens on strictly same-origin requests, preventing token leakage into HTML DOM or logs.
 
-### 📁 Requirements
+## License
 
-- Node.js & npm installed
-- Backend FastAPI server running
-- Same Tailscale network (unless you expose server publicly)
-
----
-
-### 🚀 Setup & Run
-
-```bash
-cd web_client        # enter web client folder
-npm install          # install dependencies
-npm run dev          # start development server
-
-## 🔐 Access Flow
-
-1.  Start the **FastAPI server** on your host machine.
-2.  Get the **Tailscale IP** from the server device.
-3.  Enter the IP + API Key inside the App configuration.
-4.  Browse, upload, and stream files remotely.
-
-**Example URL:** `http://100.xxx.xxx.xxx:8000`
-```
-## 🔮 Future Enhancements
-
-* [ ] User accounts + Authentication system
-* [ ] Shareable public links
-* [ ] Thumbnails & file type icons
-* [ ] Web dashboard improvements
-* [ ] Encryption-at-rest
-* [ ] Offline sync
-
-## 👤 Credits
-
-Built by **Ramachandran**.
-Originally configured to operate over **Tailscale private VPN**.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

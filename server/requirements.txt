@@ -1,4 +1,17 @@
-fastapi
-uvicorn
-python-multipart
-pydantic
+# Core Framework
+fastapi~=0.139.0
+uvicorn~=0.51.0
+pydantic~=2.13.0
+
+# Form data & Uploads (Pinned to safe version to avoid multipart parsing vulnerabilities)
+python-multipart>=0.0.18
+
+# Utilities
+python-dotenv~=1.2.0
+
+# Security / Rate Limiting
+slowapi~=0.1.10
+
+# Testing
+pytest~=9.1.0
+httpx~=0.28.0

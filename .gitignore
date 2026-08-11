@@ -1,5 +1,6 @@
 # ===== Python / FastAPI =====
 venv/
+clean_venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -38,3 +39,5 @@ dist/
 .env.production
 
 
+
+.backup.env

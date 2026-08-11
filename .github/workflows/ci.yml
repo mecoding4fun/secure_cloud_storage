@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install -r server/requirements.txt pytest httpx
+      - name: Run Pytest
+        env:
+          API_KEY: "test_key"
+        run: pytest -c server/pytest.ini server/
+
+  web-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Web Dependencies
+        working-directory: web_client
+        run: npm install
+      - name: Run Web Tests (if present)
+        working-directory: web_client
+        run: npm test --if-present
+
+  mobile-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+      - name: Install Mobile Dependencies
+        working-directory: mobile_client
+        run: flutter pub get
+      - name: Run Flutter Tests
+        working-directory: mobile_client
+        run: flutter test

@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+      
+  - package-ecosystem: "npm"
+    directory: "/web_client"
+    schedule:
+      interval: "weekly"
+      
+  - package-ecosystem: "pub"
+    directory: "/mobile_client"
+    schedule:
+      interval: "weekly"

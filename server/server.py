@@ -1,176 +1,73 @@
-# ===============================
-# File Server using FastAPI
-# ===============================
-
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+import time
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
-app = FastAPI()
+from core.config import logger, ALLOW_ORIGINS, API_KEY, SHARED_DIR, MAX_UPLOAD_BYTES
+from core.limiter import limiter
+from api.routes import router as api_router
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Server starting up. SHARED_DIR mapped to: %s", SHARED_DIR)
+    yield
+    logger.info("Server shutting down.")
+
+app = FastAPI(title="Secure Cloud Storage", lifespan=lifespan)
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error("Internal server error on %s %s: %s", request.method, request.url.path, str(exc), exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],     
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOW_ORIGINS,     
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Range", "Accept", "Origin"],
+    expose_headers=["Content-Length", "Content-Range", "Accept-Ranges"],
 )
 
-# ---------------- AUTH SECTION  ---------------- #
-API_KEY = "SETAPIKEY"
-
-def verify_key(key: str):
-    if key != API_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-
-# -------- Secure shared root directory -------- #
-SHARED_DIR = os.path.abspath("./shared/") 
-
-def clean_path(p: str):
-    """Prevents /root writes & ../../ traversal"""
-    p = p.lstrip("/")           
-    p = p.replace("..", "")     
-    return p
-
-
-# -----------------------------------------------------
-# List files
-# -----------------------------------------------------
-@app.get("/files")
-def list_files(path: str = "", key: str = Depends(verify_key)):
-    path = clean_path(path)
-    target_dir = os.path.join(SHARED_DIR, path)
-
-    if not os.path.exists(target_dir):
-        raise HTTPException(404, "Invalid path")
-
-    items = os.listdir(target_dir)
-
-    return {
-        "path": path,
-        "items": [
-            {
-                "name": item,
-                "is_dir": os.path.isdir(os.path.join(target_dir, item)),
-                "size": os.path.getsize(os.path.join(target_dir, item)) if not os.path.isdir(os.path.join(target_dir,item)) else None,
-                "modified": os.path.getmtime(os.path.join(target_dir, item)),
-            }
-            for item in items
-        ]
-    }
-
-
-# -----------------------------------------------------
-# Download file (supports nested paths)
-# -----------------------------------------------------
-@app.get("/files/{file_path:path}")
-def download_file(file_path: str, key: str = Depends(verify_key)):
-    file_path = clean_path(file_path)
-    full_path = os.path.join(SHARED_DIR, file_path)
-
-    if not os.path.exists(full_path):
-        raise HTTPException(404, "File not found")
-
-    return FileResponse(full_path)
-
-
-# -----------------------------------------------------
-# Stream video
-# -----------------------------------------------------
-@app.get("/stream/{file_path:path}")
-async def stream_video(file_path: str, request: Request, key: str = Depends(verify_key)):
-    file_path = clean_path(file_path)
-    full = os.path.join(SHARED_DIR, file_path)
-
-    if not os.path.exists(full):
-        return JSONResponse(status_code=404, content={"error": "Not found"})
-
-    file_size = os.path.getsize(full)
-    range_header = request.headers.get("Range")
-
-    def iter_file(start=0, end=None):
-        with open(full, "rb") as f:
-            f.seek(start)
-            while chunk := f.read(1024*1024):
-                yield chunk
-
-    if range_header:
-        start = int(range_header.replace("bytes=", "").split("-")[0])
-        end = file_size-1
-        return StreamingResponse(
-            iter_file(start,end),
-            status_code=206,
-            headers={
-                "Content-Range": f"bytes {start}-{end}/{file_size}",
-                "Accept-Ranges": "bytes",
-                "Content-Length": str(file_size-start),
-                "Content-Type": "video/mp4"
+@app.middleware("http")
+async def add_security_headers_and_logging(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; frame-ancestors 'none'; script-src 'self'"
+    
+    # Avoid logging the health check endpoint repeatedly
+    if request.url.path != "/health":
+        if response.status_code >= 500:
+            log_func = logger.error
+        elif response.status_code >= 400:
+            log_func = logger.warning
+        else:
+            log_func = logger.info
+            
+        log_func(
+            "Request handled",
+            extra={
+                "extra_info": {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": response.status_code,
+                    "process_time_ms": round(process_time * 1000, 2)
+                }
             }
         )
+    return response
 
-    return StreamingResponse(open(full,"rb"), media_type="video/mp4")
-
-
-# -----------------------------------------------------
-# Upload file
-# -----------------------------------------------------
-@app.post("/upload")
-async def upload_file(path: str="", file: UploadFile = File(...), key: str = Depends(verify_key)):
-    path = clean_path(path)
-    target_dir = os.path.join(SHARED_DIR, path)
-    os.makedirs(target_dir, exist_ok=True)
-
-    save_path = os.path.join(target_dir, file.filename)
-
-    with open(save_path, "wb") as f:
-        f.write(await file.read())
-
-    return {"uploaded": file.filename, "path": path}
-
-
-# -----------------------------------------------------
-# Delete file or folder
-# -----------------------------------------------------
-@app.delete("/files")
-def delete_file(name: str, path: str="", key: str = Depends(verify_key)):
-    path = clean_path(path)
-    target = os.path.join(SHARED_DIR, path, name)
-
-    if not os.path.exists(target):
-        raise HTTPException(404,"Not found")
-
-    if os.path.isdir(target):
-        os.rmdir(target)
-    else:
-        os.remove(target)
-
-    return {"deleted": name}
-
-
-# -----------------------------------------------------
-# Rename
-# -----------------------------------------------------
-@app.put("/rename")
-def rename_item(old_name: str, new_name: str, path: str="", key: str = Depends(verify_key)):
-    path = clean_path(path)
-    old = os.path.join(SHARED_DIR, path, old_name)
-    new = os.path.join(SHARED_DIR, path, new_name)
-
-    if not os.path.exists(old):
-        raise HTTPException(404,"Item not found")
-
-    os.rename(old,new)
-    return {"from": old_name, "to": new_name}
-
-
-# -----------------------------------------------------
-# mkdir
-# -----------------------------------------------------
-@app.post("/mkdir")
-def make_directory(name: str, path: str="", key: str = Depends(verify_key)):
-    path = clean_path(path)
-    target = os.path.join(SHARED_DIR, path, name)
-    os.makedirs(target, exist_ok=True)
-    return {"folder": name, "created_in": path}
+app.include_router(api_router)
