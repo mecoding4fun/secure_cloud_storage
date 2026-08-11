@@ -25,13 +25,13 @@ def test_upload_dangerous_extension():
 
 def test_upload_path_traversal():
     # FastAPI's UploadFile uses Starlette, we can just pass a malicious filename string
-    res = client.post("/upload", headers=HEADERS, files={"file": ("../../../etc/passwd", b"hello")})
-    # Our os.path.basename extracts "passwd", but if that already exists it might return 409, otherwise 200 for "passwd".
-    # Wait, the client-provided filename shouldn't contain `/`. Let's test that it actually extracts the basename safely.
+    res = client.post("/upload", headers=HEADERS, files={"file": ("../../../tmp/nonexistent_traversal.txt", b"hello")})
+    # Our os.path.basename extracts the basename
     assert res.status_code in [200, 400, 409]
-    assert not os.path.exists(os.path.join(SHARED_DIR, "../../../etc/passwd"))
+    assert not os.path.exists(os.path.join(SHARED_DIR, "../../../tmp/nonexistent_traversal.txt"))
     if res.status_code == 200:
-        os.remove(os.path.join(SHARED_DIR, "passwd"))
+        if os.path.exists(os.path.join(SHARED_DIR, "nonexistent_traversal.txt")):
+            os.remove(os.path.join(SHARED_DIR, "nonexistent_traversal.txt"))
 
 def test_upload_file_conflict():
     with open(os.path.join(SHARED_DIR, "conflict.txt"), "w") as f:
