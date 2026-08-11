@@ -410,8 +410,10 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(color: isSelected ? cAccent.withOpacity(0.5) : Colors.white.withOpacity(0.05)),
                                       ),
-                                      child: ListTile(
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: ListTile(
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                         leading: GestureDetector(
                                           onTap: () {
                                             setState(() {
@@ -457,6 +459,7 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
                                             const PopupMenuItem<String>(value: 'rename', child: Row(children: [Icon(Icons.edit_rounded, size: 20, color: cText), SizedBox(width: 12), Text('Rename')])),
                                             const PopupMenuItem<String>(value: 'delete', child: Row(children: [Icon(Icons.delete_rounded, size: 20, color: cDanger), SizedBox(width: 12), Text('Delete', style: TextStyle(color: cDanger))])),
                                           ],
+                                          ),
                                         ),
                                       ),
                                     ),
