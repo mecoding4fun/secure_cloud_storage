@@ -1,7 +1,7 @@
 # Core Framework
 fastapi~=0.139.0
 uvicorn~=0.51.0
-pydantic~=2.13.0
+pydantic~=2.13.4
 
 # Form data & Uploads (Pinned to safe version to avoid multipart parsing vulnerabilities)
 python-multipart>=0.0.18
